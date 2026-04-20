@@ -15,6 +15,11 @@ export const metadata: Metadata = {
   description:
     "Sustainable footwear made from naturally sourced wool, tree fibre, and sugarcane. Discover the most comfortable shoes you will ever wear.",
   keywords: "sustainable shoes, wool shoes, eco footwear, n-walks",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   openGraph: {
     title: "N·Walks",
     description: "Walk on Earth Lightly",
