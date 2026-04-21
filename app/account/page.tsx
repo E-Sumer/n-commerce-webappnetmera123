@@ -13,8 +13,7 @@ import {
 } from "@/lib/mock/account";
 import { getProductById, resolveProductImage } from "@/lib/data/products";
 import ProductImage from "@/components/product/ProductImage";
-import { trackAddToCart, trackLogin, trackRegister, trackRemoveFromWishlist } from "@/lib/netmera-events";
-import { identifyUser } from "@/lib/netmera";
+import { nmIdentify, nmLogin, nmRegister, nmAddToCart, nmRemoveFromWishlist } from "@/lib/netmera-events";
 import type { Product, User } from "@/types";
 
 type AuthTab = "signin" | "register";
@@ -126,13 +125,13 @@ export default function AccountPage() {
     };
 
     login(mockUser);
-    identifyUser(mockUser.id, {
+    nmIdentify(mockUser.id, {
       email: mockUser.email,
       name: mockUser.name,
       gender: mockUser.gender,
       favoriteCategory: mockUser.favoriteCategory,
     });
-    trackLogin(mockUser.id, mockUser.email, "email");
+    nmLogin(mockUser.id);
     setDetailsData({
       firstName: mockUser.name.split(" ")[0] ?? "",
       lastName: mockUser.name.split(" ").slice(1).join(" "),
@@ -159,14 +158,13 @@ export default function AccountPage() {
     };
 
     login(mockUser);
-    identifyUser(mockUser.id, {
+    nmIdentify(mockUser.id, {
       email: mockUser.email,
       name: mockUser.name,
       gender: mockUser.gender,
       favoriteCategory: mockUser.favoriteCategory,
-      signupDate: mockUser.createdAt,
     });
-    trackRegister(
+    nmRegister(
       mockUser.id,
       mockUser.email,
       mockUser.gender,
@@ -208,13 +206,13 @@ export default function AccountPage() {
     const defaultSize = product.sizes[Math.floor(product.sizes.length / 2)];
     const defaultColor = product.colors[0];
     addItem(product, defaultSize, defaultColor);
-    trackAddToCart(product, defaultSize, defaultColor.name);
+    nmAddToCart(product, defaultSize, defaultColor.name, 1, "quick_add");
     setMessage(`${product.name} added to cart.`);
   };
 
   const handleRemoveWishlistItem = (product: Product) => {
     setWishlist((prev) => prev.filter((item) => item.id !== product.id));
-    trackRemoveFromWishlist(product.id);
+    nmRemoveFromWishlist(product.id);
   };
 
   const handleSetDefaultAddress = (id: string) => {

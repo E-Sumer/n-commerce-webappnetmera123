@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import NetmeraInit from "@/components/NetmeraInit";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,13 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col antialiased" suppressHydrationWarning>
-        <Script id="netmera-init" strategy="beforeInteractive">
-          {`var netmera = netmera || []`}
-        </Script>
-        <Script
-          src="https://cdn.netmera-web.com/wsdkjs/1WbE47mRaA3HqEyx0O3afNPgUyJImYuYezJ_kbsR2JPIKiJ4y02b-w"
-          strategy="beforeInteractive"
-        />
+        <NetmeraInit />
         <Navbar />
         <main className="flex-1">{children}</main>
         <Footer />

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
+import { nmIdentify, nmLogin } from "@/lib/netmera-events";
 import Button from "@/components/ui/Button";
 import type { User } from "@/types";
 
@@ -25,7 +26,7 @@ export default function LoginPage() {
     if (isAuthenticated) router.replace("/");
   }, [isAuthenticated, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -35,7 +36,6 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
 
     const mockUser: User = {
       id: `user_${email.split("@")[0]}_${Date.now()}`,
@@ -46,8 +46,8 @@ export default function LoginPage() {
     };
 
     login(mockUser);
-    // TODO(netmera): identifyUser(mockUser.id, { email, name, gender })
-    // TODO(netmera): trackEvent("login", { userId, method: "email" })
+    nmIdentify(mockUser.id, { email: mockUser.email, name: mockUser.name, gender: mockUser.gender });
+    nmLogin(mockUser.id);
 
     setLoading(false);
     router.push("/");

@@ -10,7 +10,8 @@ import { useCartStore } from "@/lib/store";
 import { useAuthStore } from "@/lib/store";
 import { resolveProductImage } from "@/lib/data/products";
 import Button from "@/components/ui/Button";
-import { useState } from "react";
+import { nmViewCart, nmPurchase, nmRemoveFromCart } from "@/lib/netmera-events";
+import { useState, useEffect, useRef } from "react";
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, clearCart } = useCartStore();
@@ -19,11 +20,42 @@ export default function CartPage() {
   const [lastOrderTotal, setLastOrderTotal] = useState<number | null>(null);
   const [lastOrderCount, setLastOrderCount] = useState<number>(0);
 
-  // TODO(netmera): trackEvent("view_cart", { itemCount, totalValue, items })
+  // view_cart: Zustand `persist` hydrates asynchronously, so items is [] on the
+  // very first render. We watch `items` and fire once — only after items is non-empty.
+  const viewCartFiredRef = useRef(false);
+  useEffect(() => {
+    if (viewCartFiredRef.current || items.length === 0) return;
+    viewCartFiredRef.current = true;
+    nmViewCart(
+      items.map((i) => ({
+        productId: i.productId,
+        productName: i.product.name,
+        price: i.product.price,
+        quantity: i.quantity,
+      })),
+      totalPrice()
+    );
+  }, [items]); // re-runs after rehydration; ref prevents double-fire
 
   const handleCheckout = () => {
-    // TODO(netmera): trackEvent("purchase", { totalValue, items[] })
-    setLastOrderTotal(total);
+    const subtotal = totalPrice();
+    const shipping = subtotal >= 100 ? 0 : 12;
+    const tax = Math.round(subtotal * 0.08 * 100) / 100;
+    const revenue = subtotal + shipping + tax;
+
+    nmPurchase(
+      items.map((i) => ({
+        productId: i.productId,
+        productName: i.product.name,
+        price: i.product.price,
+        quantity: i.quantity,
+      })),
+      revenue,
+      shipping,
+      tax
+    );
+
+    setLastOrderTotal(revenue);
     setLastOrderCount(totalItems());
     clearCart();
     setOrderPlaced(true);
@@ -119,9 +151,16 @@ export default function CartPage() {
                     {item.product.name}
                   </Link>
                   <button
-                    onClick={() =>
-                      removeItem(item.productId, item.size, item.selectedColor.name)
-                    }
+                    onClick={() => {
+                      nmRemoveFromCart(
+                        item.productId,
+                        item.product.name,
+                        item.quantity,
+                        item.product.category,
+                        item.product.price
+                      );
+                      removeItem(item.productId, item.size, item.selectedColor.name);
+                    }}
                     className="text-muted hover:text-red-500 transition-colors flex-shrink-0"
                   >
                     <X size={16} />

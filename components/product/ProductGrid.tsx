@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import type { Product, SortOption } from "@/types";
+import { useState, useMemo, useEffect } from "react";
+import type { Product, ProductCategory, SortOption } from "@/types";
 import ProductCard from "./ProductCard";
 import { SlidersHorizontal } from "lucide-react";
+import { nmCategoryView } from "@/lib/netmera-events";
 
 interface Props {
   products: Product[];
   title: string;
   subtitle?: string;
+  /** Which collection this grid is for (Netmera category_view). */
+  listCategory: ProductCategory;
 }
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -18,11 +21,18 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "price-desc", label: "Price: High to Low" },
 ];
 
-export default function ProductGrid({ products, title, subtitle }: Props) {
+export default function ProductGrid({ products, title, subtitle, listCategory }: Props) {
   const [sort, setSort] = useState<SortOption>("featured");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200]);
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    if (products.length === 0) return;
+    Promise.resolve().then(() => {
+      nmCategoryView(listCategory, title, products.length);
+    });
+  }, [listCategory, title, products.length]);
 
   const allColors = useMemo(() => {
     const map = new Map<string, string>();

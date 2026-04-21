@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Star, Truck, RotateCcw, Shield, ChevronLeft } from "lucide-react";
 import { getProductById, getRelatedProducts, resolveProductImage } from "@/lib/data/products";
 import { useCartStore } from "@/lib/store";
+import { nmProductView, nmAddToCart } from "@/lib/netmera-events";
 import type { ProductColor } from "@/types";
 import ProductCard from "@/components/product/ProductCard";
 import ProductImage from "@/components/product/ProductImage";
@@ -18,6 +19,14 @@ export default function ProductDetailPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
   const product = getProductById(id);
+
+  // Fire product_view once on mount (runs only on the client, after hydration)
+  const [viewTracked, setViewTracked] = useState(false);
+  if (product && !viewTracked) {
+    setViewTracked(true);
+    // defer slightly so we don't block the initial render
+    Promise.resolve().then(() => nmProductView(product));
+  }
 
   // Initialise state directly — getProductById is synchronous in-memory
   const [activeVariant, setActiveVariant] = useState(0);
@@ -45,7 +54,7 @@ export default function ProductDetailPage() {
     }
     setAdding(true);
     addItem(product, selectedSize, activeColor);
-    // TODO(netmera): trackEvent("add_to_cart", { productId, size, color, price })
+    nmAddToCart(product, selectedSize, activeColor.name, 1, "product_page");
     setTimeout(() => {
       setAdding(false);
       setAdded(true);

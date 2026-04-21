@@ -52,6 +52,22 @@ class NetmeraSDK {
       if (traits) localStorage.setItem("nm_user_traits", JSON.stringify(traits));
     }
 
+    // Bridge to real Netmera Web SDK
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sdk = (window as any).Netmera;
+      if (sdk) {
+        try {
+          if (typeof sdk.setUserId === "function") sdk.setUserId(userId);
+          if (traits && typeof sdk.setUserAttribute === "function") {
+            Object.entries(traits).forEach(([k, v]) => {
+              if (v !== undefined) sdk.setUserAttribute(k, v);
+            });
+          }
+        } catch { /* noop */ }
+      }
+    }
+
     this.log("identify", { userId, traits });
     this.dispatch("netmera:identify", { userId, traits });
   }
@@ -76,10 +92,30 @@ class NetmeraSDK {
       localStorage.setItem("nm_events", JSON.stringify(this.events));
     }
 
+    // Bridge to the real Netmera Web SDK (loaded via CDN in layout.tsx).
+    // The SDK exposes window.Netmera once initialised; fall back silently if not ready yet.
+    this.bridgeToRealSDK(eventName, data);
+
     this.log("track", event);
     this.dispatch("netmera:event", event);
 
     return event;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private bridgeToRealSDK(eventName: string, data: Record<string, unknown>) {
+    if (typeof window === "undefined") return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sdk = (window as any).Netmera;
+    if (!sdk) return;
+
+    try {
+      if (typeof sdk.sendForCustomEvent === "function") {
+        sdk.sendForCustomEvent(eventName, data);
+      }
+    } catch {
+      /* SDK not yet ready — events already buffered by the simulation layer */
+    }
   }
 
   logout() {

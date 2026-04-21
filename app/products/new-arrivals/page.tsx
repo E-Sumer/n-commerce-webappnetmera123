@@ -4,5 +4,12 @@ import ProductGrid from "@/components/product/ProductGrid";
 
 export default function NewArrivalsPage() {
   const products = getProductsByCategory("new-arrivals");
-  return <ProductGrid products={products} title="New Arrivals" subtitle="Just Dropped" />;
+  return (
+    <ProductGrid
+      products={products}
+      title="New Arrivals"
+      subtitle="Just Dropped"
+      listCategory="new-arrivals"
+    />
+  );
 }

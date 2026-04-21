@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import { ShoppingBag, User, Menu, X } from "lucide-react";
 import { useCartStore } from "@/lib/store";
 import { useAuthStore } from "@/lib/store";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 const navLinks = [
   { id: "shop", label: "Shop", href: "/" },
@@ -17,13 +17,33 @@ const navLinks = [
   { id: "new-arrivals", label: "New Arrivals", href: "/products/new-arrivals" },
 ];
 
+function subscribePersistHydration(onStoreChange: () => void) {
+  const unsubCart = useCartStore.persist.onFinishHydration(onStoreChange);
+  const unsubAuth = useAuthStore.persist.onFinishHydration(onStoreChange);
+  return () => {
+    unsubCart();
+    unsubAuth();
+  };
+}
+
+function getPersistHydrated() {
+  return useCartStore.persist.hasHydrated() && useAuthStore.persist.hasHydrated();
+}
+
 export default function Navbar() {
   const pathname = usePathname();
   const totalItems = useCartStore((s) => s.totalItems);
   const { isAuthenticated, user } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPath, setMenuPath] = useState(pathname);
-  const cartCount = totalItems();
+  /** SSR + first client frame match empty persist; then Zustand rehydrates from localStorage. */
+  const persistReady = useSyncExternalStore(
+    subscribePersistHydration,
+    getPersistHydrated,
+    () => false
+  );
+  const cartCount = persistReady ? totalItems() : 0;
+  const showAuth = persistReady && isAuthenticated;
   const isMenuOpen = menuOpen && menuPath === pathname;
 
   const activeNavId = useMemo(() => {
@@ -67,9 +87,9 @@ export default function Navbar() {
           {/* Icons */}
           <div className="flex items-center gap-4">
             <Link
-              href={isAuthenticated ? "/account" : "/auth/login"}
+              href={showAuth ? "/account" : "/auth/login"}
               className="text-ink hover:text-sage transition-colors"
-              title={isAuthenticated ? user?.name || "Account" : "Login"}
+              title={showAuth ? user?.name || "Account" : "Login"}
             >
               <User size={20} strokeWidth={1.5} />
             </Link>
@@ -120,11 +140,11 @@ export default function Navbar() {
             ))}
             <hr className="border-warm" />
             <Link
-              href={isAuthenticated ? "/account" : "/auth/login"}
+              href={showAuth ? "/account" : "/auth/login"}
               onClick={() => setMenuOpen(false)}
               className="text-sm font-medium tracking-widest uppercase text-ink hover:text-sage transition-colors"
             >
-              {isAuthenticated ? "My Account" : "Login / Sign Up"}
+              {showAuth ? "My Account" : "Login / Sign Up"}
             </Link>
           </div>
         )}

@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
+import { nmIdentify, nmRegister } from "@/lib/netmera-events";
 import Button from "@/components/ui/Button";
 import type { User, Gender, ProductCategory } from "@/types";
 
@@ -43,10 +44,9 @@ export default function SignupPage() {
     setStep(2);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
 
     const mockUser: User = {
       id: `user_${email.split("@")[0]}_${Date.now()}`,
@@ -58,8 +58,13 @@ export default function SignupPage() {
     };
 
     login(mockUser);
-    // TODO(netmera): identifyUser(mockUser.id, { email, name, gender, favoriteCategory, signupDate })
-    // TODO(netmera): trackEvent("signup", { userId, email, gender, favoriteCategory })
+    nmIdentify(mockUser.id, {
+      email: mockUser.email,
+      name: mockUser.name,
+      gender: mockUser.gender,
+      favoriteCategory: mockUser.favoriteCategory,
+    });
+    nmRegister(mockUser.id, mockUser.email, mockUser.gender, mockUser.favoriteCategory ?? "");
 
     setLoading(false);
     router.push("/");

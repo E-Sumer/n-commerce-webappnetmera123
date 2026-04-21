@@ -6,5 +6,12 @@ export default function MenPage() {
   const products = getProductsByCategory("men").filter(
     (product) => product.id !== "m-grove-walker"
   );
-  return <ProductGrid products={products} title="Men's Shoes" subtitle="Men" />;
+  return (
+    <ProductGrid
+      products={products}
+      title="Men's Shoes"
+      subtitle="Men"
+      listCategory="men"
+    />
+  );
 }

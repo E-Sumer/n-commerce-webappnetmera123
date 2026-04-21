@@ -6,8 +6,8 @@ import { ShoppingBag, Star } from "lucide-react";
 import type { Product } from "@/types";
 import { useCartStore } from "@/lib/store";
 import { resolveProductImage } from "@/lib/data/products";
+import { nmAddToCart } from "@/lib/netmera-events";
 import ProductImage from "./ProductImage";
-// TODO(netmera): re-import trackEvent from "@/lib/netmera" when re-enabling analytics
 
 interface Props {
   product: Product;
@@ -27,8 +27,8 @@ export default function ProductCard({ product }: Props) {
     e.stopPropagation();
     const size = product.sizes[Math.floor(product.sizes.length / 2)];
     addItem(product, size, currentColor);
+    nmAddToCart(product, size, currentColor.name, 1, "quick_add");
     setAdded(true);
-    // TODO(netmera): trackEvent("add_to_cart", { productId, price, category, color, size, source: "quick_add" })
     setTimeout(() => setAdded(false), 1500);
   };
 
