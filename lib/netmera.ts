@@ -108,10 +108,37 @@ export interface NMSearchEvent {
  *   SearchEvent, OrderDeliverEvent, AddToCartEvent, BannerClickEvent,
  *   RateEvent, OrderShipEvent, apiKey
  */
+/**
+ * Netmera user object returned by sdk.getUser().
+ *
+ * Confirmed own keys (from browser console, getUser() inspection):
+ *   save, setCustomId, setEmail, setGsmNo, setName, setSurName,
+ *   addProfileAttr, getId, getCustomId
+ *
+ * Usage:
+ *   const user = sdk.getUser();
+ *   user.setCustomId(email);   ← this is "External ID" in the Netmera panel
+ *   user.setEmail(email);
+ *   user.setName(name);
+ *   user.save();               ← sends the profile update to the backend
+ */
+export interface NMUser {
+  save:           () => void;
+  setCustomId:    (id: string) => void;     // External ID in Targeting > People
+  setEmail:       (email: string) => void;
+  setName:        (name: string) => void;
+  setSurName:     (surname: string) => void;
+  setGsmNo:       (gsm: string) => void;
+  addProfileAttr: (key: string, value: unknown) => void;
+  getId:          () => string;
+  getCustomId:    () => string;
+  [key: string]: unknown;
+}
+
 export interface NMApi {
   // ── Core methods ────────────────────────────────────────────────────────
   sendEvent: (event: object) => void;
-  getUser: () => unknown;
+  getUser: () => NMUser;
   getSessionId: () => string;
   getAppKey: () => string;
   getVersion: () => string;
@@ -184,21 +211,41 @@ export function findLiveSDK(): NMApi | null {
 }
 
 /**
- * Write the user's External ID + profile into _n_user.prfl in localStorage.
+ * Set the user's External ID + profile in Netmera via sdk.getUser() setters.
  *
- * NOTE: updateUser() is ONLY available during the SDK's queue-init phase
- * (when window.netmera is still a [] array).  After the SDK is live it is
- * gone completely — array commands are rejected, function-push `this` = the
- * live SDK object which has no updateUser.
+ * Confirmed API (from browser console inspection of getUser() return value):
+ *   user.setCustomId(email)  ← "Custom ID" = External ID in Targeting > People
+ *   user.setEmail(email)
+ *   user.setName(name)
+ *   user.save()              ← sends the update to the Netmera backend
  *
- * The authoritative path is in NetmeraInit: we push updateUser to the []
- * queue BEFORE the SDK script tag is inserted, so it runs with the correct
- * internal `this` context during SDK startup.
- *
- * This function handles the session that is already live (user just logged in,
- * no page reload yet): writing _n_user.prfl directly ensures the External ID
- * is present on the NEXT page load when the queue-phase updateUser runs and
- * the SDK syncs the profile to the server.
+ * Requires the live SDK — call this from a pushToRealSDK() callback or
+ * from whenSDKReady() so sdk is guaranteed to be the live object.
+ */
+export function setUserIdentity(sdk: NMApi, params: {
+  externalId: string;
+  email: string;
+  name?: string;
+}) {
+  try {
+    const user = sdk.getUser();
+    user.setCustomId(params.externalId);
+    user.setEmail(params.email);
+    if (params.name) user.setName(params.name);
+    user.save();
+    console.info(
+      "%c[N·Walks Netmera] setUserIdentity ✓",
+      "color:#5C7A5F;font-weight:bold",
+      { customId: params.externalId, email: params.email, name: params.name }
+    );
+  } catch (err) {
+    console.warn("[N·Walks Netmera] setUserIdentity failed:", err);
+  }
+}
+
+/**
+ * @deprecated Use setUserIdentity(sdk, params) instead.
+ * Kept as a localStorage-only fallback — does NOT sync to the Netmera backend.
  */
 export function pushUserIdentity(params: {
   externalId: string;
@@ -209,12 +256,7 @@ export function pushUserIdentity(params: {
   try {
     const raw   = localStorage.getItem("_n_user");
     const nUser = raw ? JSON.parse(raw) : {};
-    nUser.prfl  = {
-      ...(nUser.prfl ?? {}),
-      externalId: params.externalId,
-      email:      params.email,
-      name:       params.name ?? "",
-    };
+    nUser.prfl  = { ...(nUser.prfl ?? {}), externalId: params.externalId, email: params.email, name: params.name ?? "" };
     localStorage.setItem("_n_user", JSON.stringify(nUser));
   } catch { /* noop */ }
 }

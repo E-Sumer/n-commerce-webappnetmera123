@@ -26,7 +26,7 @@
  */
 
 import type { Product, ProductCategory } from "@/types";
-import { trackEvent, identifyUser, Netmera, pushToRealSDK, pushUserIdentity } from "@/lib/netmera";
+import { trackEvent, identifyUser, Netmera, pushToRealSDK, setUserIdentity } from "@/lib/netmera";
 import type { NMApi } from "@/lib/netmera";
 
 function getUtmParams() {
@@ -81,12 +81,12 @@ export function nmLogin(
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
 
   // ── Real Netmera Web SDK ──────────────────────────────────────────────────
-  // 1. Write External ID into _n_user.prfl so it's ready for the next
-  //    queue-phase updateUser call (NetmeraInit on next page load)
-  pushUserIdentity({ externalId: email, email, name });
-
-  // 2. Fire the LoginEvent for analytics / funnel tracking
   pushToRealSDK((api: NMApi) => {
+    // 1. Set External ID via getUser() setters — this syncs to the backend
+    //    user.setCustomId(email) = "External ID" in Targeting > People
+    setUserIdentity(api, { externalId: email, email, name });
+
+    // 2. Fire the LoginEvent for analytics / funnel tracking
     try {
       const event = new api.LoginEvent();
       event.userId   = userId;
@@ -95,8 +95,7 @@ export function nmLogin(
       event.method   = method;
       api.sendEvent(event);
     } catch (err) {
-      console.warn("[N·Walks Netmera] LoginEvent failed:", err,
-        "\nAvailable methods:", Object.keys(api).filter(k => typeof (api as Record<string,unknown>)[k] === "function").join(", "));
+      console.warn("[N·Walks Netmera] LoginEvent failed:", err);
     }
   });
 
@@ -119,11 +118,11 @@ export function nmRegister(
   favoriteCategory = ""
 ) {
   // ── Real Netmera Web SDK ──────────────────────────────────────────────────
-  // 1. Write External ID into _n_user.prfl for next-page-load queue sync
-  pushUserIdentity({ externalId: email, email, name });
-
-  // 2. Fire the RegisterEvent
   pushToRealSDK((api: NMApi) => {
+    // 1. Set External ID via getUser() setters
+    setUserIdentity(api, { externalId: email, email, name });
+
+    // 2. Fire the RegisterEvent
     try {
       const event = new api.RegisterEvent();
       event.userId           = userId;
