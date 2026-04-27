@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Netmera, findLiveSDK, whenSDKReady, pushUserIdentity } from "@/lib/netmera";
+import { Netmera, findLiveSDK, whenSDKReady } from "@/lib/netmera";
 import type { NMApi } from "@/lib/netmera";
 
 const NETMERA_WSDK_SRC =
@@ -12,13 +12,10 @@ export default function NetmeraInit() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const w = window as any;
 
-    // 1. Ensure the [] queue exists before anything else
+    // ── Step 1: Ensure the [] queue exists ────────────────────────────────────
     w.netmera = w.netmera || [];
 
-    // 2. Restore simulation-layer state from localStorage
-    Netmera.init();
-
-    // 3. Read persisted auth session (Zustand persists under "nwalks-auth")
+    // ── Step 2: Read persisted auth session (Zustand → "nwalks-auth") ────────
     let sessionUser: { id: string; email: string; name?: string } | null = null;
     try {
       const raw = localStorage.getItem("nwalks-auth");
@@ -27,11 +24,50 @@ export default function NetmeraInit() {
         const u = state?.user;
         if (u?.id && u?.email) sessionUser = u;
       }
-    } catch {
-      /* noop */
+    } catch { /* noop */ }
+
+    // ── Step 3: Queue updateUser BEFORE the SDK script loads ─────────────────
+    //
+    // KEY INSIGHT: updateUser / setUserId only exist on the internal command
+    // API that the Netmera SDK injects as `this` while it processes the []
+    // queue during initialization.  They are NEVER available on the live
+    // window.netmera object.
+    //
+    // So: if the SDK hasn't initialised yet (window.netmera is still an Array),
+    // push the updateUser call NOW — the SDK will call it with the right `this`
+    // context as part of its startup sequence.
+    //
+    // This runs on every page load, so returning users (session from
+    // localStorage) always have their External ID registered on the server.
+    if (Array.isArray(w.netmera) && sessionUser) {
+      const u = sessionUser;
+      w.netmera.push(function(this: Record<string, unknown>) {
+        try {
+          if (typeof this.updateUser === "function") {
+            (this.updateUser as Function)({
+              externalId: u.email,   // email = External ID (searchable in panel)
+              email:      u.email,
+              name:       u.name ?? "",
+            });
+          }
+          if (typeof this.setUserId === "function") {
+            (this.setUserId as Function)(u.id);
+          }
+          console.info(
+            "%c[N·Walks Netmera] updateUser queued ✓",
+            "color:#5C7A5F;font-weight:bold",
+            { externalId: u.email, name: u.name }
+          );
+        } catch (err) {
+          console.warn("[N·Walks Netmera] updateUser queue callback failed:", err);
+        }
+      });
     }
 
-    // 4. Load the SDK script (idempotent)
+    // ── Step 4: Restore simulation-layer state ────────────────────────────────
+    Netmera.init();
+
+    // ── Step 5: Load the SDK script (idempotent) ──────────────────────────────
     if (!document.querySelector('script[data-nwalks-netmera-wsdk="1"]')) {
       const el = document.createElement("script");
       el.src = NETMERA_WSDK_SRC;
@@ -40,36 +76,26 @@ export default function NetmeraInit() {
       document.head.appendChild(el);
     }
 
-    // 5. Wait for "Netmera is ready…" (after service-worker handshake),
-    //    then restore the user session and log available SDK methods.
+    // ── Step 6: whenSDKReady → fire analytics events ──────────────────────────
+    //
+    // Note: updateUser is handled above in the queue (Step 3) and runs
+    // BEFORE "Netmera is ready…".  Step 6 is only for event-constructor calls
+    // (LoginEvent etc.) which require the live SDK object.
     whenSDKReady((sdk: NMApi) => {
-      // ── DEBUG — log available methods so we can verify the API surface ──────
+      // ── DEBUG ─────────────────────────────────────────────────────────────
       const sdkObj = sdk as unknown as Record<string, unknown>;
       const ownFns = Object.keys(sdkObj).filter((k) => typeof sdkObj[k] === "function");
-      const protoFns =
-        Object.getPrototypeOf(sdkObj) !== Object.prototype
-          ? Object.getOwnPropertyNames(Object.getPrototypeOf(sdkObj)).filter(
-              (k) => typeof sdkObj[k] === "function" && k !== "constructor"
-            )
-          : [];
       console.info(
         "%c[N·Walks Netmera] SDK ready ✓",
         "color:#5C7A5F;font-weight:bold;font-size:13px",
-        "\nOwn methods  :", ownFns.join(", ") || "(none)",
-        "\nProto methods:", protoFns.join(", ") || "(none)"
+        "\nOwn methods:", ownFns.join(", ") || "(none)"
       );
       // ─────────────────────────────────────────────────────────────────────
 
-      // Session restore: re-bind the user so this device session is attributed
-      // to the correct profile in Netmera (Targeting > People, searchable by email).
       if (sessionUser) {
         const u = sessionUser;
 
-        // 1. Set External ID + profile via the push command API
-        //    (this populates _n_user.prfl so the user is searchable by email)
-        pushUserIdentity({ externalId: u.email, email: u.email, name: u.name ?? "", userId: u.id });
-
-        // 2. Fire a LoginEvent so the session is attributed in analytics
+        // Fire a LoginEvent so this session is attributed in analytics
         try {
           const event = new sdk.LoginEvent();
           event.userId   = u.id;
@@ -77,13 +103,10 @@ export default function NetmeraInit() {
           event.userName = u.name ?? "";
           sdk.sendEvent(event);
         } catch (err) {
-          console.warn(
-            "[N·Walks Netmera] Session-restore LoginEvent failed:", err,
-            "\nAvailable methods:", Object.keys(sdk).filter(k => typeof (sdk as Record<string,unknown>)[k] === "function").join(", ")
-          );
+          console.warn("[N·Walks Netmera] Session-restore LoginEvent failed:", err);
         }
 
-        // 3. Keep the simulation layer in sync
+        // Keep the simulation layer in sync
         Netmera.identify(u.id, { email: u.email, name: u.name ?? "" });
       }
     });

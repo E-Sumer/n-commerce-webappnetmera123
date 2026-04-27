@@ -184,77 +184,38 @@ export function findLiveSDK(): NMApi | null {
 }
 
 /**
- * Set the user's External ID + profile in Netmera so the user appears
- * in Targeting > People and is searchable by email.
+ * Write the user's External ID + profile into _n_user.prfl in localStorage.
  *
- * Tries three mechanisms in order:
- *   1. Array-command format  nm.push(['updateUser', {...}])
- *      — matches the standard Netmera WSDK init snippet pattern
- *   2. Function callback     nm.push(fn)  where this / arg is the command API
- *   3. Direct localStorage   write _n_user.prfl directly as a last resort
- *      so the profile is present on the next SDK sync cycle
+ * NOTE: updateUser() is ONLY available during the SDK's queue-init phase
+ * (when window.netmera is still a [] array).  After the SDK is live it is
+ * gone completely — array commands are rejected, function-push `this` = the
+ * live SDK object which has no updateUser.
+ *
+ * The authoritative path is in NetmeraInit: we push updateUser to the []
+ * queue BEFORE the SDK script tag is inserted, so it runs with the correct
+ * internal `this` context during SDK startup.
+ *
+ * This function handles the session that is already live (user just logged in,
+ * no page reload yet): writing _n_user.prfl directly ensures the External ID
+ * is present on the NEXT page load when the queue-phase updateUser runs and
+ * the SDK syncs the profile to the server.
  */
 export function pushUserIdentity(params: {
-  externalId: string;   // email — human-readable, used as External ID
+  externalId: string;
   email: string;
   name?: string;
-  userId?: string;      // internal session binding
 }) {
   if (typeof window === "undefined") return;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const nm = (window as any).netmera;
-  if (!nm || typeof nm.push !== "function") return;
-
-  const profile = {
-    externalId: params.externalId,
-    email:      params.email,
-    name:       params.name ?? "",
-  };
-
-  // ── Approach 1: array-command format ──────────────────────────────────────
-  try { nm.push(["updateUser", profile]); }        catch { /* noop */ }
-  if (params.userId) {
-    try { nm.push(["setUserId", params.userId]); } catch { /* noop */ }
-  }
-
-  // ── Approach 2: function callback — this / arg = command API ─────────────
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    nm.push(function(this: any, arg?: any) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cmd: any = (arg && typeof arg.updateUser === "function") ? arg : this;
-      console.info(
-        "%c[N·Walks Netmera] pushUserIdentity callback",
-        "color:#5C7A5F;font-weight:bold",
-        "\ntypeof cmd          :", typeof cmd,
-        "\ncmd.updateUser      :", typeof cmd?.updateUser,
-        "\ncmd.setUserId       :", typeof cmd?.setUserId,
-        "\ncmd own keys        :", Object.keys(cmd ?? {}).join(", ") || "(none)"
-      );
-      try {
-        if (typeof cmd?.updateUser === "function") {
-          cmd.updateUser(profile);
-        }
-        if (params.userId && typeof cmd?.setUserId === "function") {
-          cmd.setUserId(params.userId);
-        }
-      } catch { /* noop */ }
-    });
-  } catch { /* noop */ }
-
-  // ── Approach 3: direct localStorage fallback ──────────────────────────────
-  // The SDK reads _n_user.prfl on startup; writing it directly ensures the
-  // External ID is present on the next SDK sync even if approaches 1+2 fail.
   try {
     const raw   = localStorage.getItem("_n_user");
     const nUser = raw ? JSON.parse(raw) : {};
-    nUser.prfl  = { ...(nUser.prfl ?? {}), ...profile };
+    nUser.prfl  = {
+      ...(nUser.prfl ?? {}),
+      externalId: params.externalId,
+      email:      params.email,
+      name:       params.name ?? "",
+    };
     localStorage.setItem("_n_user", JSON.stringify(nUser));
-    console.info(
-      "%c[N·Walks Netmera] _n_user.prfl written directly",
-      "color:#5C7A5F;font-weight:bold",
-      nUser.prfl
-    );
   } catch { /* noop */ }
 }
 

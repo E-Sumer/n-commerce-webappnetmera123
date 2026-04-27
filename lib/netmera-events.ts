@@ -81,8 +81,9 @@ export function nmLogin(
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
 
   // ── Real Netmera Web SDK ──────────────────────────────────────────────────
-  // 1. Set External ID + profile so user appears in Targeting > People
-  pushUserIdentity({ externalId: email, email, name, userId });
+  // 1. Write External ID into _n_user.prfl so it's ready for the next
+  //    queue-phase updateUser call (NetmeraInit on next page load)
+  pushUserIdentity({ externalId: email, email, name });
 
   // 2. Fire the LoginEvent for analytics / funnel tracking
   pushToRealSDK((api: NMApi) => {
@@ -118,8 +119,8 @@ export function nmRegister(
   favoriteCategory = ""
 ) {
   // ── Real Netmera Web SDK ──────────────────────────────────────────────────
-  // 1. Set External ID + profile
-  pushUserIdentity({ externalId: email, email, name, userId });
+  // 1. Write External ID into _n_user.prfl for next-page-load queue sync
+  pushUserIdentity({ externalId: email, email, name });
 
   // 2. Fire the RegisterEvent
   pushToRealSDK((api: NMApi) => {
