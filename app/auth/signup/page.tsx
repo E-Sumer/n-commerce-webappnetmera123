@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
-import { nmIdentify, nmRegister } from "@/lib/netmera-events";
+import { nmRegister } from "@/lib/netmera-events";
 import Button from "@/components/ui/Button";
 import type { User, Gender, ProductCategory } from "@/types";
 
@@ -58,13 +58,13 @@ export default function SignupPage() {
     };
 
     login(mockUser);
-    nmIdentify(mockUser.id, {
-      email: mockUser.email,
-      name: mockUser.name,
-      gender: mockUser.gender,
-      favoriteCategory: mockUser.favoriteCategory,
-    });
-    nmRegister(mockUser.id, mockUser.email, mockUser.gender, mockUser.favoriteCategory ?? "");
+    nmRegister(
+      mockUser.id,
+      mockUser.email,
+      mockUser.name,
+      mockUser.gender,
+      mockUser.favoriteCategory ?? ""
+    );
 
     setLoading(false);
     router.push("/");

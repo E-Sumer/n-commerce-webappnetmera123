@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuthStore } from "@/lib/store";
-import { nmIdentify, nmLogin } from "@/lib/netmera-events";
+import { nmLogin } from "@/lib/netmera-events";
 import Button from "@/components/ui/Button";
 import type { User } from "@/types";
 
@@ -46,8 +46,7 @@ export default function LoginPage() {
     };
 
     login(mockUser);
-    nmIdentify(mockUser.id, { email: mockUser.email, name: mockUser.name, gender: mockUser.gender });
-    nmLogin(mockUser.id);
+    nmLogin(mockUser.id, mockUser.email, mockUser.name, "email");
 
     setLoading(false);
     router.push("/");

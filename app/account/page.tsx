@@ -13,7 +13,7 @@ import {
 } from "@/lib/mock/account";
 import { getProductById, resolveProductImage } from "@/lib/data/products";
 import ProductImage from "@/components/product/ProductImage";
-import { nmIdentify, nmLogin, nmRegister, nmAddToCart, nmRemoveFromWishlist } from "@/lib/netmera-events";
+import { nmLogin, nmRegister, nmLogout, nmAddToCart, nmRemoveFromWishlist } from "@/lib/netmera-events";
 import type { Product, User } from "@/types";
 
 type AuthTab = "signin" | "register";
@@ -125,13 +125,7 @@ export default function AccountPage() {
     };
 
     login(mockUser);
-    nmIdentify(mockUser.id, {
-      email: mockUser.email,
-      name: mockUser.name,
-      gender: mockUser.gender,
-      favoriteCategory: mockUser.favoriteCategory,
-    });
-    nmLogin(mockUser.id);
+    nmLogin(mockUser.id, mockUser.email, mockUser.name, "email");
     setDetailsData({
       firstName: mockUser.name.split(" ")[0] ?? "",
       lastName: mockUser.name.split(" ").slice(1).join(" "),
@@ -158,15 +152,10 @@ export default function AccountPage() {
     };
 
     login(mockUser);
-    nmIdentify(mockUser.id, {
-      email: mockUser.email,
-      name: mockUser.name,
-      gender: mockUser.gender,
-      favoriteCategory: mockUser.favoriteCategory,
-    });
     nmRegister(
       mockUser.id,
       mockUser.email,
+      mockUser.name,
       mockUser.gender,
       mockUser.favoriteCategory ?? "new-arrivals"
     );
@@ -439,7 +428,7 @@ export default function AccountPage() {
               </button>
             ))}
             <button
-              onClick={logout}
+              onClick={() => { nmLogout(); logout(); }}
               className="w-full text-left px-4 py-3 text-sm text-red-700 hover:bg-red-50 border-t border-[#EEE7DA]"
             >
               Sign Out
@@ -463,7 +452,7 @@ export default function AccountPage() {
               </button>
             ))}
             <button
-              onClick={logout}
+              onClick={() => { nmLogout(); logout(); }}
               className="whitespace-nowrap px-3 py-2 rounded-lg text-sm border border-red-200 text-red-700 bg-white"
             >
               Sign Out
