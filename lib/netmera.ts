@@ -184,6 +184,50 @@ export function findLiveSDK(): NMApi | null {
 }
 
 /**
+ * Set the user's External ID + profile in Netmera.
+ *
+ * This MUST go through the push-queue mechanism — not through findLiveSDK() —
+ * because the push callback's `this` / first-arg is Netmera's internal
+ * command API, which exposes updateUser() and setUserId().  These methods are
+ * NOT present on window.netmera itself (confirmed from browser inspection).
+ *
+ * Call this on every login, register, and session-restore so the user appears
+ * in Targeting > People searchable by email / External ID.
+ */
+export function pushUserIdentity(params: {
+  externalId: string;   // email — human-readable, used as External ID
+  email: string;
+  name?: string;
+  userId?: string;      // internal session binding
+}) {
+  if (typeof window === "undefined") return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nm = (window as any).netmera;
+  if (!nm || typeof nm.push !== "function") return;
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nm.push(function(this: any, arg?: any) {
+      // 'this' or 'arg' is the Netmera command API (has updateUser / setUserId)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cmd: any = (arg && typeof arg.updateUser === "function") ? arg : this;
+      try {
+        if (typeof cmd?.updateUser === "function") {
+          cmd.updateUser({
+            externalId: params.externalId,
+            email:      params.email,
+            name:       params.name ?? "",
+          });
+        }
+        if (params.userId && typeof cmd?.setUserId === "function") {
+          cmd.setUserId(params.userId);
+        }
+      } catch { /* noop */ }
+    });
+  } catch { /* noop */ }
+}
+
+/**
  * Call the real Netmera Web SDK — handles two lifecycle states:
  *
  * AFTER "Netmera is ready…" (login / register on user interaction):

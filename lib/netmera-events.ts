@@ -26,7 +26,7 @@
  */
 
 import type { Product, ProductCategory } from "@/types";
-import { trackEvent, identifyUser, Netmera, pushToRealSDK } from "@/lib/netmera";
+import { trackEvent, identifyUser, Netmera, pushToRealSDK, pushUserIdentity } from "@/lib/netmera";
 import type { NMApi } from "@/lib/netmera";
 
 function getUtmParams() {
@@ -81,6 +81,10 @@ export function nmLogin(
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
 
   // ── Real Netmera Web SDK ──────────────────────────────────────────────────
+  // 1. Set External ID + profile so user appears in Targeting > People
+  pushUserIdentity({ externalId: email, email, name, userId });
+
+  // 2. Fire the LoginEvent for analytics / funnel tracking
   pushToRealSDK((api: NMApi) => {
     try {
       const event = new api.LoginEvent();
@@ -90,7 +94,6 @@ export function nmLogin(
       event.method   = method;
       api.sendEvent(event);
     } catch (err) {
-      // Fallback: log which methods are available for diagnosis
       console.warn("[N·Walks Netmera] LoginEvent failed:", err,
         "\nAvailable methods:", Object.keys(api).filter(k => typeof (api as Record<string,unknown>)[k] === "function").join(", "));
     }
@@ -115,6 +118,10 @@ export function nmRegister(
   favoriteCategory = ""
 ) {
   // ── Real Netmera Web SDK ──────────────────────────────────────────────────
+  // 1. Set External ID + profile
+  pushUserIdentity({ externalId: email, email, name, userId });
+
+  // 2. Fire the RegisterEvent
   pushToRealSDK((api: NMApi) => {
     try {
       const event = new api.RegisterEvent();

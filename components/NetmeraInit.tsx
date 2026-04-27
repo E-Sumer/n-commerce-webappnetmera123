@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Netmera, findLiveSDK, whenSDKReady } from "@/lib/netmera";
+import { Netmera, findLiveSDK, whenSDKReady, pushUserIdentity } from "@/lib/netmera";
 import type { NMApi } from "@/lib/netmera";
 
 const NETMERA_WSDK_SRC =
@@ -60,10 +60,16 @@ export default function NetmeraInit() {
       );
       // ─────────────────────────────────────────────────────────────────────
 
-      // Session restore: re-fire a LoginEvent so this browser session is
-      // attributed to the correct user profile in Netmera (Targeting > People).
+      // Session restore: re-bind the user so this device session is attributed
+      // to the correct profile in Netmera (Targeting > People, searchable by email).
       if (sessionUser) {
         const u = sessionUser;
+
+        // 1. Set External ID + profile via the push command API
+        //    (this populates _n_user.prfl so the user is searchable by email)
+        pushUserIdentity({ externalId: u.email, email: u.email, name: u.name ?? "", userId: u.id });
+
+        // 2. Fire a LoginEvent so the session is attributed in analytics
         try {
           const event = new sdk.LoginEvent();
           event.userId   = u.id;
@@ -71,14 +77,13 @@ export default function NetmeraInit() {
           event.userName = u.name ?? "";
           sdk.sendEvent(event);
         } catch (err) {
-          // LoginEvent failed — log available methods for diagnosis
           console.warn(
             "[N·Walks Netmera] Session-restore LoginEvent failed:", err,
             "\nAvailable methods:", Object.keys(sdk).filter(k => typeof (sdk as Record<string,unknown>)[k] === "function").join(", ")
           );
         }
 
-        // Keep the simulation layer in sync
+        // 3. Keep the simulation layer in sync
         Netmera.identify(u.id, { email: u.email, name: u.name ?? "" });
       }
     });
