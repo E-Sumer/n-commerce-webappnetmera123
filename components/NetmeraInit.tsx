@@ -41,25 +41,46 @@ export default function NetmeraInit() {
     // localStorage) always have their External ID registered on the server.
     if (Array.isArray(w.netmera) && sessionUser) {
       const u = sessionUser;
-      w.netmera.push(function(this: Record<string, unknown>) {
-        try {
-          if (typeof this.updateUser === "function") {
-            (this.updateUser as Function)({
-              externalId: u.email,   // email = External ID (searchable in panel)
-              email:      u.email,
-              name:       u.name ?? "",
-            });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      w.netmera.push(function(this: any, arg0?: any) {
+        // The SDK may pass its internal command API as 'this' OR as the first argument.
+        // Check both, then fall back to window.netmera itself.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const candidates: any[] = [arg0, this, w.netmera];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cmd = candidates.find((c: any) => c && typeof c.updateUser === "function");
+
+        // ── DIAGNOSTIC — always visible ──────────────────────────────────
+        console.info(
+          "%c[N·Walks Netmera] queue callback fired",
+          "color:#5C7A5F;font-weight:bold",
+          "\ntypeof arg0         :", typeof arg0,
+          "\ntypeof this         :", typeof this,
+          "\narg0.updateUser     :", typeof arg0?.updateUser,
+          "\nthis.updateUser     :", typeof this?.updateUser,
+          "\ncmd found           :", !!cmd,
+          "\narg0 own keys       :", Object.keys(arg0 ?? {}).slice(0, 6).join(", ") || "(none)",
+          "\nthis own keys       :", Object.keys(this  ?? {}).slice(0, 6).join(", ") || "(none)",
+        );
+
+        if (cmd) {
+          try {
+            cmd.updateUser({ externalId: u.email, email: u.email, name: u.name ?? "" });
+            if (typeof cmd.setUserId === "function") cmd.setUserId(u.id);
+            console.info(
+              "%c[N·Walks Netmera] updateUser CALLED ✓",
+              "color:#5C7A5F;font-weight:bold",
+              { externalId: u.email }
+            );
+          } catch (err) {
+            console.warn("[N·Walks Netmera] updateUser threw:", err);
           }
-          if (typeof this.setUserId === "function") {
-            (this.setUserId as Function)(u.id);
-          }
-          console.info(
-            "%c[N·Walks Netmera] updateUser queued ✓",
-            "color:#5C7A5F;font-weight:bold",
-            { externalId: u.email, name: u.name }
+        } else {
+          console.warn(
+            "[N·Walks Netmera] updateUser NOT found — neither arg0 nor this has it.",
+            "\nAll arg0 keys:", Object.keys(arg0 ?? {}).join(", ") || "(none)",
+            "\nAll this keys:", Object.keys(this  ?? {}).join(", ") || "(none)",
           );
-        } catch (err) {
-          console.warn("[N·Walks Netmera] updateUser queue callback failed:", err);
         }
       });
     }
@@ -90,6 +111,20 @@ export default function NetmeraInit() {
         "color:#5C7A5F;font-weight:bold;font-size:13px",
         "\nOwn methods:", ownFns.join(", ") || "(none)"
       );
+
+      // Inspect getUser() return value — might expose setExternalId or updateUser
+      try {
+        const userObj = sdk.getUser();
+        console.info(
+          "%c[N·Walks Netmera] getUser() →",
+          "color:#5C7A5F;font-weight:bold",
+          userObj,
+          "\ngetUser own keys:", Object.keys(userObj as object ?? {}).join(", ") || "(none)",
+          "\ngetUser methods :", Object.keys(userObj as object ?? {})
+            .filter(k => typeof (userObj as Record<string,unknown>)?.[k] === "function")
+            .join(", ") || "(none)"
+        );
+      } catch { /* noop */ }
       // ─────────────────────────────────────────────────────────────────────
 
       if (sessionUser) {
