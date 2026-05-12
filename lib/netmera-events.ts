@@ -1,28 +1,18 @@
 /**
  * Netmera e-commerce event definitions for N·Walks.
  *
- * Naming conventions
- * ──────────────────
- * • Real SDK events  → PascalCase constructors on window.netmera
- *                      (LoginEvent, RegisterEvent, AddToCartEvent, …)
- * • Simulation layer → snake_case event names (localStorage / debug panel)
+ * Event firing strategy
+ * ─────────────────────
+ * All real-SDK events use direct sendEvent({ code, ...attrs }) instead of
+ * typed constructors.  This ensures every attribute appears in the Netmera
+ * dashboard's "Event Data" column — constructor instances store fields in
+ * structured schema columns only, leaving Event Data empty.
  *
- * Real SDK usage pattern
- * ───────────────────────
- *   const event = new sdk.LoginEvent();
- *   event.userId = userId;
- *   event.email  = email;
- *   sdk.sendEvent(event);
- *
- * User identification
- * ────────────────────
- * The SDK does NOT expose updateUser() or setUserId() as standalone methods.
- * User identity is carried inside LoginEvent / RegisterEvent (userId, email)
- * and Netmera associates subsequent events to the same profile automatically.
- *
- * Pre-defined events used here (all have native Netmera dashboard support):
- *   LoginEvent · RegisterEvent · AddToCartEvent · RemoveFromCartEvent ·
- *   ViewCartEvent · PurchaseEvent · ProductViewEvent · ViewCategoryEvent
+ * Standard event codes used:
+ *   n:cl  Login          n:rg  Register
+ *   n:pv  Product View   n:vc  Category View
+ *   n:at  Add to Cart    n:rc  Remove from Cart
+ *   n:vt  View Cart      n:ph  Purchase
  */
 
 import type { Product, ProductCategory } from "@/types";
@@ -35,81 +25,58 @@ function getUtmParams() {
   }
   const params = new URLSearchParams(window.location.search);
   return {
-    utmSource: params.get("utm_source") ?? "",
-    utmMedium: params.get("utm_medium") ?? "",
+    utmSource:   params.get("utm_source")   ?? "",
+    utmMedium:   params.get("utm_medium")   ?? "",
     utmCampaign: params.get("utm_campaign") ?? "",
   };
 }
 
 // ─── Identity (simulation layer only) ─────────────────────────────────────────
 
-/** Updates the simulation layer's identity (localStorage + debug panel). */
 export function nmIdentify(
   userId: string,
-  traits: {
-    email: string;
-    name: string;
-    gender?: string;
-    favoriteCategory?: string;
-  }
+  traits: { email: string; name: string; gender?: string; favoriteCategory?: string }
 ) {
   identifyUser(userId, {
-    email: traits.email,
-    name: traits.name,
-    gender: traits.gender ?? "other",
+    email:            traits.email,
+    name:             traits.name,
+    gender:           traits.gender ?? "other",
     favoriteCategory: traits.favoriteCategory ?? "",
   });
 }
 
 // ─── Auth events ──────────────────────────────────────────────────────────────
 
-/**
- * Fired on successful login.
- *
- * Real SDK: new LoginEvent() → sendEvent(event)
- *   The event carries userId + email so Netmera links this session to the
- *   correct profile in Targeting > People.
- *
- * Simulation: identifyUser + trackEvent("login")
- */
-export function nmLogin(
-  userId: string,
-  email: string,
-  name = "",
-  method = "email"
-) {
+/** n:cl — Login */
+export function nmLogin(userId: string, email: string, name = "", method = "email") {
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
 
-  // ── Real Netmera Web SDK ──────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
-    // 1. Set External ID via getUser() setters — this syncs to the backend
-    //    user.setCustomId(email) = "External ID" in Targeting > People
+    // 1. Set External ID (Targeting > People, searchable by email)
     setUserIdentity(api, { externalId: email, email, name });
 
-    // 2. Fire the LoginEvent for analytics / funnel tracking
+    // 2. Fire Login event with all attributes
     try {
-      const event = new api.LoginEvent();
-      event.userId   = userId;
-      event.email    = email;
-      event.userName = name;
-      event.method   = method;
-      api.sendEvent(event);
+      api.sendEvent({
+        code:        "n:cl",
+        userId,
+        email,
+        userName:    name,
+        method,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] LoginEvent failed:", err);
+      console.warn("[N·Walks Netmera] Login (n:cl) failed:", err);
     }
   });
 
-  // ── Simulation layer (localStorage / debug panel) ─────────────────────────
   identifyUser(userId, { email, name });
-  trackEvent("login", { userId, email, method, utmSource, utmMedium, utmCampaign });
+  trackEvent("n:cl", { userId, email, method, utmSource, utmMedium, utmCampaign });
 }
 
-/**
- * Fired on successful account creation.
- *
- * Real SDK: new RegisterEvent() → sendEvent(event)
- * Simulation: identifyUser + trackEvent("register")
- */
+/** n:rg — Register */
 export function nmRegister(
   userId: string,
   email: string,
@@ -117,108 +84,101 @@ export function nmRegister(
   gender = "other",
   favoriteCategory = ""
 ) {
-  // ── Real Netmera Web SDK ──────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
-    // 1. Set External ID via getUser() setters
     setUserIdentity(api, { externalId: email, email, name });
-
-    // 2. Fire the RegisterEvent
     try {
-      const event = new api.RegisterEvent();
-      event.userId           = userId;
-      event.email            = email;
-      event.userName         = name;
-      event.gender           = gender;
-      event.favoriteCategory = favoriteCategory;
-      api.sendEvent(event);
+      api.sendEvent({
+        code:             "n:rg",
+        userId,
+        email,
+        userName:         name,
+        gender,
+        favoriteCategory,
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] RegisterEvent failed:", err);
+      console.warn("[N·Walks Netmera] Register (n:rg) failed:", err);
     }
   });
 
-  // ── Simulation layer ──────────────────────────────────────────────────────
   identifyUser(userId, { email, name, gender, favoriteCategory });
-  trackEvent("register", { userId, email, gender, favoriteCategory });
+  trackEvent("n:rg", { userId, email, gender, favoriteCategory });
 }
 
-/**
- * Fired on logout.
- * Simulation: clears localStorage keys.
- */
+/** Logout — clears simulation-layer state */
 export function nmLogout() {
   Netmera.logout();
 }
 
 // ─── Product events ───────────────────────────────────────────────────────────
 
-/** Fired when the product detail page is mounted (first render). */
+/** n:pv — Product View */
 export function nmProductView(product: Product) {
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
 
-  // ── Real SDK ──────────────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event = new api.ProductViewEvent();
-      event.itemId       = product.id;
-      event.itemName     = product.name;
-      event.price        = product.price;
-      event.currency     = "USD";
-      event.categoryId   = product.category;
-      event.categoryName = product.category;
-      event.brandId      = "n-walks";
-      event.brandName    = "N·WALKS";
-      event.keywords     = product.tags ?? [];
-      api.sendEvent(event);
+      api.sendEvent({
+        code:         "n:pv",
+        itemId:       product.id,
+        itemName:     product.name,
+        price:        product.price,
+        currency:     "USD",
+        categoryId:   product.category,
+        categoryName: product.category,
+        brandId:      "n-walks",
+        brandName:    "N·WALKS",
+        keywords:     (product.tags ?? []).join(", "),
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        pageUrl:      typeof window !== "undefined" ? window.location.pathname : "",
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] ProductViewEvent failed:", err);
+      console.warn("[N·Walks Netmera] Product View (n:pv) failed:", err);
     }
   });
 
-  // ── Simulation layer ──────────────────────────────────────────────────────
-  trackEvent("product_view", {
+  trackEvent("n:pv", {
+    itemId:       product.id,
+    itemName:     product.name,
+    price:        product.price,
+    categoryId:   product.category,
     categoryName: product.category,
-    keywords: product.tags,
-    brandName: "N·WALKS",
-    variant: "",
+    brandName:    "N·WALKS",
+    keywords:     product.tags,
     utmSource,
     utmMedium,
-    categoryId: product.category,
     utmCampaign,
-    itemId: product.id,
-    price: product.price,
-    brandId: "n-walks",
-    itemName: product.name,
   });
 }
 
-/** Fired when a category / PLP grid is shown (women, men, new-arrivals). */
-export function nmCategoryView(
-  category: ProductCategory,
-  title: string,
-  productCount: number
-) {
-  // ── Real SDK ──────────────────────────────────────────────────────────────
+/** n:vc — Category View */
+export function nmCategoryView(category: ProductCategory, title: string, productCount: number) {
+  const { utmSource, utmMedium, utmCampaign } = getUtmParams();
+
   pushToRealSDK((api: NMApi) => {
     try {
-      const event = new api.ViewCategoryEvent();
-      event.categoryId   = category;
-      event.categoryName = title;
-      api.sendEvent(event);
+      api.sendEvent({
+        code:         "n:vc",
+        categoryId:   category,
+        categoryName: title,
+        productCount,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        pageUrl:      typeof window !== "undefined" ? window.location.pathname : "",
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] ViewCategoryEvent failed:", err);
+      console.warn("[N·Walks Netmera] Category View (n:vc) failed:", err);
     }
   });
 
-  // ── Simulation layer ──────────────────────────────────────────────────────
-  trackEvent("category_view", { category, title, productCount });
+  trackEvent("n:vc", { category, title, productCount, utmSource, utmMedium, utmCampaign });
 }
 
 // ─── Cart events ──────────────────────────────────────────────────────────────
 
-/**
- * Fired when a product is added to cart.
- * source = "product_page" | "quick_add"
- */
+/** n:at — Add to Cart */
 export function nmAddToCart(
   product: Product,
   size: number,
@@ -226,80 +186,84 @@ export function nmAddToCart(
   quantity = 1,
   source: "product_page" | "quick_add" = "product_page"
 ) {
-  // ── Real SDK ──────────────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event = new api.AddToCartEvent();
-      event.itemId       = product.id;
-      event.itemName     = product.name;
-      event.price        = product.price;
-      event.currency     = "USD";
-      event.quantity     = quantity;
-      event.categoryId   = product.category;
-      event.categoryName = product.category;
-      event.brandId      = "n-walks";
-      event.brandName    = "N·WALKS";
-      api.sendEvent(event);
+      api.sendEvent({
+        code:         "n:at",
+        itemId:       product.id,
+        itemName:     product.name,
+        price:        product.price,
+        currency:     "USD",
+        quantity,
+        size,
+        color:        colorName,
+        categoryId:   product.category,
+        categoryName: product.category,
+        brandId:      "n-walks",
+        brandName:    "N·WALKS",
+        source,
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] AddToCartEvent failed:", err);
+      console.warn("[N·Walks Netmera] Add to Cart (n:at) failed:", err);
     }
   });
 
-  // ── Simulation layer ──────────────────────────────────────────────────────
-  trackEvent("add_to_cart", {
-    productId: product.id,
+  trackEvent("n:at", {
+    productId:   product.id,
     productName: product.name,
-    category: product.category,
-    price: product.price,
-    currency: "USD",
+    category:    product.category,
+    price:       product.price,
+    currency:    "USD",
     quantity,
     size,
-    color: colorName,
+    color:       colorName,
     source,
   });
 }
 
 /**
  * Standard Netmera event: View Cart  (code: n:vt)
- * Fired when the user views the /cart page.
- * SDK constructor: ViewCartEvent → sent as n:vt
+ * Fired on /cart page mount.
  */
 export function nmViewCart(
   items: Array<{ productId: string; productName: string; price: number; quantity: number }>,
   cartValue: number
 ) {
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
+  const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
-  // ── Real SDK  (n:vt) ──────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event     = new api.ViewCartEvent();
-      event.subTotal  = Math.round(cartValue * 100) / 100;
-      event.currency  = "USD";
-      event.itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
-      event.items     = items.map((i) => ({
-        itemId:   i.productId,
-        itemName: i.productName,
-        price:    i.price,
-        quantity: i.quantity,
-      }));
-      api.sendEvent(event);
+      api.sendEvent({
+        code:      "n:vt",
+        subTotal:  Math.round(cartValue * 100) / 100,
+        currency:  "USD",
+        itemCount,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        items: items.map((i) => ({
+          itemId:   i.productId,
+          itemName: i.productName,
+          price:    i.price,
+          quantity: i.quantity,
+        })),
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] ViewCartEvent (n:vt) failed:", err);
+      console.warn("[N·Walks Netmera] View Cart (n:vt) failed:", err);
     }
   });
 
-  // ── Simulation layer ──────────────────────────────────────────────────────
   trackEvent("n:vt", {
+    subTotal:  Math.round(cartValue * 100) / 100,
+    itemCount,
     utmSource,
     utmMedium,
     utmCampaign,
-    subTotal: Math.round(cartValue * 100) / 100,
-    itemCount: items.reduce((acc, i) => acc + i.quantity, 0),
     items: items.map((i) => ({
-      itemId: i.productId,
+      itemId:   i.productId,
       itemName: i.productName,
-      price: i.price,
+      price:    i.price,
       quantity: i.quantity,
     })),
   });
@@ -307,8 +271,7 @@ export function nmViewCart(
 
 /**
  * Standard Netmera event: Purchase  (code: n:ph)
- * Fired when the user confirms checkout (Checkout button click).
- * SDK constructor: PurchaseEvent → sent as n:ph
+ * Fired on Checkout button click.
  */
 export function nmPurchase(
   items: Array<{ productId: string; productName: string; price: number; quantity: number }>,
@@ -316,50 +279,50 @@ export function nmPurchase(
   shipping: number,
   tax: number
 ) {
-  const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const orderId   = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
 
-  // ── Real SDK  (n:ph) ──────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event     = new api.PurchaseEvent();
-      event.orderId   = orderId;
-      event.subTotal  = Math.round(revenue * 100) / 100;
-      event.shipping  = Math.round(shipping * 100) / 100;
-      event.tax       = Math.round(tax * 100) / 100;
-      event.discount  = 0;
-      event.coupon    = "";
-      event.currency  = "USD";
-      event.itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
-      event.items     = items.map((i) => ({
-        itemId:   i.productId,
-        itemName: i.productName,
-        price:    i.price,
-        quantity: i.quantity,
-      }));
-      api.sendEvent(event);
+      api.sendEvent({
+        code:      "n:ph",
+        orderId,
+        subTotal:  Math.round(revenue * 100) / 100,
+        shipping:  Math.round(shipping * 100) / 100,
+        tax:       Math.round(tax * 100) / 100,
+        discount:  0,
+        coupon:    "",
+        currency:  "USD",
+        itemCount,
+        items: items.map((i) => ({
+          itemId:   i.productId,
+          itemName: i.productName,
+          price:    i.price,
+          quantity: i.quantity,
+        })),
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] PurchaseEvent (n:ph) failed:", err);
+      console.warn("[N·Walks Netmera] Purchase (n:ph) failed:", err);
     }
   });
 
-  // ── Simulation layer ──────────────────────────────────────────────────────
   trackEvent("n:ph", {
     orderId,
-    revenue: Math.round(revenue * 100) / 100,
-    shipping: Math.round(shipping * 100) / 100,
-    tax: Math.round(tax * 100) / 100,
-    currency: "USD",
-    itemCount: items.reduce((acc, i) => acc + i.quantity, 0),
+    revenue:   Math.round(revenue * 100) / 100,
+    shipping:  Math.round(shipping * 100) / 100,
+    tax:       Math.round(tax * 100) / 100,
+    currency:  "USD",
+    itemCount,
     items: items.map((i) => ({
-      productId: i.productId,
+      productId:   i.productId,
       productName: i.productName,
-      price: i.price,
-      quantity: i.quantity,
+      price:       i.price,
+      quantity:    i.quantity,
     })),
   });
 }
 
-/** Fired when a single item is removed from cart. */
+/** n:rc — Remove from Cart */
 export function nmRemoveFromCart(
   productId: string,
   productName: string,
@@ -369,56 +332,51 @@ export function nmRemoveFromCart(
 ) {
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
 
-  // ── Real SDK ──────────────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event = new api.RemoveFromCartEvent();
-      event.itemId       = productId;
-      event.itemName     = productName;
-      event.price        = price;
-      event.currency     = "USD";
-      event.quantity     = quantity;
-      event.categoryId   = categoryName;
-      event.categoryName = categoryName;
-      event.brandId      = "n-walks";
-      event.brandName    = "N·WALKS";
-      api.sendEvent(event);
+      api.sendEvent({
+        code:         "n:rc",
+        itemId:       productId,
+        itemName:     productName,
+        price,
+        currency:     "USD",
+        quantity,
+        categoryId:   categoryName,
+        categoryName,
+        brandId:      "n-walks",
+        brandName:    "N·WALKS",
+        utmSource,
+        utmMedium,
+        utmCampaign,
+      });
     } catch (err) {
-      console.warn("[N·Walks Netmera] RemoveFromCartEvent failed:", err);
+      console.warn("[N·Walks Netmera] Remove from Cart (n:rc) failed:", err);
     }
   });
 
-  // ── Simulation layer ──────────────────────────────────────────────────────
-  trackEvent("remove_from_cart", {
+  trackEvent("n:rc", {
+    itemId:       productId,
+    itemName:     productName,
+    price,
     categoryName,
-    keywords: [],
-    brandName: "N·WALKS",
-    variant: "",
+    quantity,
     utmSource,
     utmMedium,
     utmCampaign,
-    price,
-    categoryId: categoryName,
-    itemId: productId,
-    brandId: "n-walks",
-    itemName: productName,
-    itemCount: quantity,
   });
 }
 
-// ─── Wishlist / account events ────────────────────────────────────────────────
+// ─── Wishlist / misc events ───────────────────────────────────────────────────
 
 export function nmRemoveFromWishlist(productId: string) {
   trackEvent("remove_from_wishlist", { productId });
 }
 
-// ─── Page view ────────────────────────────────────────────────────────────────
-
-/** Generic page_view for pages that don't have a more specific event. */
+/** Generic page_view */
 export function nmPageView(page: string, extra?: Record<string, unknown>) {
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
   trackEvent("pageView", {
-    pageURL: page,
+    pageURL:     page,
     referrerURL: typeof document !== "undefined" ? document.referrer : "",
     utmSource,
     utmMedium,
