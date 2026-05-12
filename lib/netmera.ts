@@ -4,100 +4,87 @@ import type { NetmeraEvent } from "@/types";
 // Each Event class exposes writable properties; you create an instance,
 // set props, then call netmera.sendEvent(instance).
 
+// ─── Actual WSDK event instance interfaces ────────────────────────────────────
+//
+// Confirmed from WSDK source (netmera_sdk.js) inspection:
+//   Each constructor exposes SETTER METHODS that map to abbreviated property
+//   codes sent to the Netmera backend.  Direct property assignment does NOT
+//   populate Event Data — you must call the setter methods.
+//
+//   Confirmed event codes (differ from iOS docs):
+//     LoginEvent         n:cl   RegisterEvent      n:rg
+//     ProductViewEvent   n:vp   ViewCategoryEvent  n:cv
+//     AddToCartEvent     n:acp  RemoveFromCartEvent n:rcp
+//     ViewCartEvent      n:vt   PurchaseEvent      n:ph
+
+/** n:cl */
 export interface NMLoginEvent {
-  userId?: string;
-  uid?: string;
-  email?: string;
-  userName?: string;
-  method?: string;
+  setUserId: (id: string) => void;       // → uid
   [key: string]: unknown;
 }
 
+/** n:rg */
 export interface NMRegisterEvent {
-  userId?: string;
-  uid?: string;
-  email?: string;
-  userName?: string;
-  gender?: string;
-  favoriteCategory?: string;
+  setUserId: (id: string) => void;       // → uid
   [key: string]: unknown;
 }
 
-export interface NMProductViewEvent {
-  itemId?: string;
-  itemName?: string;
-  price?: number;
-  currency?: string;
-  categoryId?: string;
-  categoryName?: string;
-  brandId?: string;
-  brandName?: string;
-  keywords?: string[];
+/** Shared setters for product/cart item events */
+interface NMItemEvent {
+  setItemId:      (id: string)    => void;   // → ea
+  setItemName:    (name: string)  => void;   // → eb
+  setPrice:       (price: number) => void;   // → eq
+  setItemCount:   (count: number) => void;   // → ec
+  setCategoryId:  (id: string)    => void;   // → ga
+  setCategoryName:(name: string)  => void;   // → ef
+  setBrandId:     (id: string)    => void;   // → gd
+  setBrandName:   (name: string)  => void;   // → eh
+  setVariant:     (v: string)     => void;   // → ei  (e.g. "Color / Size")
+  setKeywords:    (kw: string)    => void;   // → eg
   [key: string]: unknown;
 }
 
-export interface NMAddToCartEvent {
-  itemId?: string;
-  itemName?: string;
-  price?: number;
-  currency?: string;
-  quantity?: number;
-  categoryId?: string;
-  categoryName?: string;
-  brandId?: string;
-  brandName?: string;
-  [key: string]: unknown;
-}
+/** n:vp */
+export type NMProductViewEvent = NMItemEvent;
 
-export interface NMRemoveFromCartEvent {
-  itemId?: string;
-  itemName?: string;
-  price?: number;
-  currency?: string;
-  quantity?: number;
-  categoryId?: string;
-  categoryName?: string;
-  brandId?: string;
-  brandName?: string;
-  [key: string]: unknown;
-}
+/** n:acp */
+export type NMAddToCartEvent = NMItemEvent;
 
-export interface NMCartItem {
-  itemId:    string;
-  itemName:  string;
-  price:     number;
-  quantity:  number;
-  categoryId?:   string;
-  categoryName?: string;
-  brandId?:      string;
-  brandName?:    string;
-  [key: string]: unknown;
-}
+/** n:rcp */
+export type NMRemoveFromCartEvent = NMItemEvent;
 
+/** n:vt */
 export interface NMViewCartEvent {
-  subTotal?:  number;
-  currency?:  string;
-  itemCount?: number;
-  items?:     NMCartItem[];   // required by Netmera backend (code 2004 if missing)
+  setSubTotal:  (v: number) => void;  // → er
+  setItemCount: (v: number) => void;  // → ec
   [key: string]: unknown;
 }
 
+/** Line-item plain-object shape for PurchaseEvent.setPurchaseLineItemEvent */
+export interface NMPurchaseLineItem {
+  ea: string;  // itemId
+  eb: string;  // itemName
+  eq: number;  // price
+  ec: number;  // quantity
+}
+
+/** n:ph */
 export interface NMPurchaseEvent {
-  orderId?:   string;
-  subTotal?:  number;
-  shipping?:  number;
-  tax?:       number;
-  discount?:  number;
-  coupon?:    string;
-  currency?:  string;
-  itemCount?: number;
-  items?:     NMCartItem[];   // required by Netmera backend (code 2004 if missing)
+  setSubTotal:              (v: number)                  => void;  // → er
+  setGrandTotal:            (v: number)                  => void;  // → es
+  setShippingCost:          (v: number)                  => void;  // → ep
+  setDiscount:              (v: number)                  => void;  // → el
+  setCoupon:                (v: string)                  => void;  // → ek
+  setPaymentMethod:         (v: string)                  => void;  // → em
+  setItemCount:             (v: number)                  => void;  // → ec
+  setPurchaseLineItemEvent: (items: NMPurchaseLineItem[]) => void;  // → items
   [key: string]: unknown;
 }
 
+/** n:cv */
 export interface NMViewCategoryEvent {
-  categoryId?: string;
-  categoryName?: string;
+  setCategoryId:   (id: string)   => void;  // → ga
+  setCategoryName: (name: string) => void;  // → ef
   [key: string]: unknown;
 }
 

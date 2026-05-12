@@ -60,9 +60,7 @@ export default function NetmeraInit() {
         // 2. Fire LoginEvent so this session is attributed in analytics
         try {
           const event = new sdk.LoginEvent();
-          event.userId   = u.id;
-          event.email    = u.email;
-          event.userName = u.name ?? "";
+          event.setUserId(u.id);  // only setter confirmed on LoginEvent
           sdk.sendEvent(event);
         } catch (err) {
           console.warn("[N·Walks Netmera] Session-restore LoginEvent failed:", err);
