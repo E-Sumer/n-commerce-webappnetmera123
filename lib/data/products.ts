@@ -387,46 +387,29 @@ export const products: Product[] = [
 
 const PRODUCT_IMAGE_BY_ID: Record<string, string> = {
   // Women (6 unique)
-  "w-cloud-runner":
-    "https://www.allbirds.com/cdn/shop/files/A12467_26Q1_Tree-Glider-Burlwood-Burlwood-Sole_PDP_LEFT.png?v=1774480073&width=1280",
-  "w-wool-lounger":
-    "https://www.allbirds.com/cdn/shop/files/A12378_26Q2_Breezer-Mary-Jane-Dusty-Pink-Dusty-Pink-Sole_PDP_LEFT.png?v=1774475317&width=1280",
-  "w-meadow-mist":
-    "https://www.allbirds.com/cdn/shop/files/A12469_26Q2_Womens-Varsity-Strap-Burlwood-Natural-White-Sole_PDP_LEFT.png?v=1774566733&width=1280",
-  "w-terra-lite":
-    "https://www.allbirds.com/cdn/shop/files/A12258_26Q1_Cruiser-Slip-On-Terry-Ochre-Warm-White-Sole_PDP_LEFT.png?v=1774566112&width=1280",
-  "w-dusk-walker":
-    "https://www.allbirds.com/cdn/shop/files/A12468_26Q2_Breezer-Point-Burlwood-Dark-Cocoa-Sole_PDP_LEFT.png?v=1774475526&width=1280",
-  "w-shore-breeze":
-    "https://www.allbirds.com/cdn/shop/files/A12852_26Q1_Cruiser-Canvas-Sea-Spray-Natural-White-Sole_PDP_LEFT.png?v=1771027497&width=1280",
+  "w-cloud-runner":  "/products/ioshomeimage.jpg",
+  "w-wool-lounger":  "/products/WoolLounger.jpg",
+  "w-meadow-mist":   "/products/MeadowMist.jpg",
+  "w-terra-lite":    "/products/TerraLite.jpg",
+  "w-dusk-walker":   "/products/DuskWalker.jpg",
+  "w-shore-breeze":  "/products/shorebreeze.png",
 
   // Men (6 unique)
-  "m-trail-blazer":
-    "https://www.allbirds.com/cdn/shop/files/A12500_26Q1_Runner-NZ-Canvas-Stripes-Deep-Navy-Blizzard-Sole_PDP_LEFT.png?v=1774550585&width=1280",
-  "m-urban-wool":
-    "https://www.allbirds.com/cdn/shop/files/A12852_26Q1_Cruiser-Canvas-Sea-Spray-Natural-White-Sole_PDP_LEFT.png?v=1771027497&width=1280",
-  "m-ridge-runner":
-    "https://www.allbirds.com/cdn/shop/files/A12286_26Q1_Dasher-NZ-Seagrass-Parchment_PDP_LEFT.png?v=1774484356&width=1280",
-  "m-stone-path":
-    "https://www.allbirds.com/cdn/shop/files/A12270_26Q1_Mens-Varsity-Parchment-Blizzard-Sole_PDP_LEFT.png?v=1765307399&width=1280",
-  "m-solar-slip":
-    "https://www.allbirds.com/cdn/shop/files/A11645_25Q4_Wool-Cruiser-Mid-Select-Deep-Navy-Gum-Sole_PDP_LEFT_c9e6c446-9edf-4fe5-9453-725eff5326f8.png?v=1761691426&width=1280",
-  "m-grove-walker":
-    "https://www.allbirds.com/cdn/shop/files/A12468_26Q2_Breezer-Point-Burlwood-Dark-Cocoa-Sole_PDP_LEFT.png?v=1774475526&width=1280",
+  "m-trail-blazer":  "/products/TrailBlazer.jpg",
+  "m-urban-wool":    "/products/UrbanWool.jpg",
+  "m-ridge-runner":  "/products/RidgeRunner.jpg",
+  "m-stone-path":    "/products/StonePath.jpg",
+  "m-solar-slip":    "/products/SolarSlip.jpg",
+  "m-grove-walker":  "/products/GroveWalker.jpg",
 
   // New arrivals (4 unique)
-  "na-wave-runner":
-    "https://www.allbirds.com/cdn/shop/files/A12469_26Q2_Womens-Varsity-Strap-Burlwood-Natural-White-Sole_PDP_LEFT.png?v=1774566733&width=1280",
-  "na-peak-climber":
-    "https://www.allbirds.com/cdn/shop/files/A12270_26Q1_Mens-Varsity-Parchment-Blizzard-Sole_PDP_LEFT.png?v=1765307399&width=1280",
-  "na-dawn-breaker":
-    "https://www.allbirds.com/cdn/shop/files/A12378_26Q2_Breezer-Mary-Jane-Dusty-Pink-Dusty-Pink-Sole_PDP_LEFT.png?v=1774475317&width=1280",
-  "na-ember-slide":
-    "https://www.allbirds.com/cdn/shop/files/A12258_26Q1_Cruiser-Slip-On-Terry-Ochre-Warm-White-Sole_PDP_LEFT.png?v=1774566112&width=1280",
+  "na-wave-runner":  "/products/waverunner.jpg",
+  "na-peak-climber": "/products/PeakClimber.jpg",
+  "na-dawn-breaker": "/products/DawnBreaker.jpg",
+  "na-ember-slide":  "/products/EmberSlide.jpg",
 };
 
-const FALLBACK_IMAGE =
-  "https://www.allbirds.com/cdn/shop/files/A12467_26Q1_Tree-Glider-Burlwood-Burlwood-Sole_PDP_LEFT.png?v=1774480073&width=1280";
+const FALLBACK_IMAGE = "/products/ioshomeimage.jpg";
 
 export function getProductById(id: string): Product | undefined {
   return products.find((p) => p.id === id);

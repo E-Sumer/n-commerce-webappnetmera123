@@ -6,8 +6,7 @@ const categories = [
     label: "Women",
     href: "/products/women",
     bg: "from-[#E8C4BA] to-[#D4A8A0]",
-    image:
-      "https://www.allbirds.com/cdn/shop/files/A12468_26Q2_Breezer-Point-Burlwood-Dark-Cocoa-Sole_PDP_LEFT.png?v=1774475526&width=1280",
+    image: "/products/WoolLounger.jpg",
     text: "Shop the Collection",
     count: "24 styles",
     emoji: "👠",
@@ -16,8 +15,7 @@ const categories = [
     label: "Men",
     href: "/products/men",
     bg: "from-[#A8B8C8] to-[#8A9EAE]",
-    image:
-      "https://www.allbirds.com/cdn/shop/files/A12270_26Q1_Mens-Varsity-Parchment-Blizzard-Sole_PDP_LEFT.png?v=1765307399&width=1280",
+    image: "/products/TrailBlazer.jpg",
     text: "Explore Men's",
     count: "18 styles",
     emoji: "👞",
@@ -26,8 +24,7 @@ const categories = [
     label: "New Arrivals",
     href: "/products/new-arrivals",
     bg: "from-[#8FAF8E] to-[#5C7A5F]",
-    image:
-      "https://www.allbirds.com/cdn/shop/files/A11645_25Q4_Wool-Cruiser-Mid-Select-Deep-Navy-Gum-Sole_PDP_LEFT_c9e6c446-9edf-4fe5-9453-725eff5326f8.png?v=1761691426&width=1280",
+    image: "/products/waverunner.jpg",
     text: "See What's New",
     count: "4 new styles",
     emoji: "✨",
