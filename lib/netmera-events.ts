@@ -55,18 +55,12 @@ export function nmLogin(userId: string, email: string, name = "", method = "emai
     // 1. Set External ID (Targeting > People, searchable by email)
     setUserIdentity(api, { externalId: email, email, name });
 
-    // 2. Fire Login event with all attributes
+    // 2. Fire Login event — constructor for server recognition + Object.assign
+    //    for all attributes (non-schema fields land in Event Data)
     try {
-      api.sendEvent({
-        code:        "n:cl",
-        userId,
-        email,
-        userName:    name,
-        method,
-        utmSource,
-        utmMedium,
-        utmCampaign,
-      });
+      const e = new api.LoginEvent();
+      Object.assign(e, { userId, email, userName: name, method, utmSource, utmMedium, utmCampaign });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] Login (n:cl) failed:", err);
     }
@@ -87,14 +81,9 @@ export function nmRegister(
   pushToRealSDK((api: NMApi) => {
     setUserIdentity(api, { externalId: email, email, name });
     try {
-      api.sendEvent({
-        code:             "n:rg",
-        userId,
-        email,
-        userName:         name,
-        gender,
-        favoriteCategory,
-      });
+      const e = new api.RegisterEvent();
+      Object.assign(e, { userId, email, userName: name, gender, favoriteCategory });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] Register (n:rg) failed:", err);
     }
@@ -117,8 +106,8 @@ export function nmProductView(product: Product) {
 
   pushToRealSDK((api: NMApi) => {
     try {
-      api.sendEvent({
-        code:         "n:pv",
+      const e = new api.ProductViewEvent();
+      Object.assign(e, {
         itemId:       product.id,
         itemName:     product.name,
         price:        product.price,
@@ -133,6 +122,7 @@ export function nmProductView(product: Product) {
         utmCampaign,
         pageUrl:      typeof window !== "undefined" ? window.location.pathname : "",
       });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] Product View (n:pv) failed:", err);
     }
@@ -158,8 +148,8 @@ export function nmCategoryView(category: ProductCategory, title: string, product
 
   pushToRealSDK((api: NMApi) => {
     try {
-      api.sendEvent({
-        code:         "n:vc",
+      const e = new api.ViewCategoryEvent();
+      Object.assign(e, {
         categoryId:   category,
         categoryName: title,
         productCount,
@@ -168,6 +158,7 @@ export function nmCategoryView(category: ProductCategory, title: string, product
         utmCampaign,
         pageUrl:      typeof window !== "undefined" ? window.location.pathname : "",
       });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] Category View (n:vc) failed:", err);
     }
@@ -188,8 +179,12 @@ export function nmAddToCart(
 ) {
   pushToRealSDK((api: NMApi) => {
     try {
-      api.sendEvent({
-        code:         "n:at",
+      // Use the constructor so the server recognises the event definition,
+      // then assign ALL attributes (standard + custom) onto the instance.
+      // Standard fields map to schema columns; non-schema fields (size, color,
+      // source, utm*) appear in the Netmera dashboard Event Data column.
+      const e = new api.AddToCartEvent();
+      Object.assign(e, {
         itemId:       product.id,
         itemName:     product.name,
         price:        product.price,
@@ -203,6 +198,7 @@ export function nmAddToCart(
         brandName:    "N·WALKS",
         source,
       });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] Add to Cart (n:at) failed:", err);
     }
@@ -234,8 +230,8 @@ export function nmViewCart(
 
   pushToRealSDK((api: NMApi) => {
     try {
-      api.sendEvent({
-        code:      "n:vt",
+      const e = new api.ViewCartEvent();
+      Object.assign(e, {
         subTotal:  Math.round(cartValue * 100) / 100,
         currency:  "USD",
         itemCount,
@@ -249,6 +245,7 @@ export function nmViewCart(
           quantity: i.quantity,
         })),
       });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] View Cart (n:vt) failed:", err);
     }
@@ -284,8 +281,8 @@ export function nmPurchase(
 
   pushToRealSDK((api: NMApi) => {
     try {
-      api.sendEvent({
-        code:      "n:ph",
+      const e = new api.PurchaseEvent();
+      Object.assign(e, {
         orderId,
         subTotal:  Math.round(revenue * 100) / 100,
         shipping:  Math.round(shipping * 100) / 100,
@@ -301,6 +298,7 @@ export function nmPurchase(
           quantity: i.quantity,
         })),
       });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] Purchase (n:ph) failed:", err);
     }
@@ -334,8 +332,8 @@ export function nmRemoveFromCart(
 
   pushToRealSDK((api: NMApi) => {
     try {
-      api.sendEvent({
-        code:         "n:rc",
+      const e = new api.RemoveFromCartEvent();
+      Object.assign(e, {
         itemId:       productId,
         itemName:     productName,
         price,
@@ -349,6 +347,7 @@ export function nmRemoveFromCart(
         utmMedium,
         utmCampaign,
       });
+      api.sendEvent(e);
     } catch (err) {
       console.warn("[N·Walks Netmera] Remove from Cart (n:rc) failed:", err);
     }
