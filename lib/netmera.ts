@@ -62,22 +62,36 @@ export interface NMRemoveFromCartEvent {
   [key: string]: unknown;
 }
 
+export interface NMCartItem {
+  itemId:    string;
+  itemName:  string;
+  price:     number;
+  quantity:  number;
+  categoryId?:   string;
+  categoryName?: string;
+  brandId?:      string;
+  brandName?:    string;
+  [key: string]: unknown;
+}
+
 export interface NMViewCartEvent {
-  subTotal?: number;
-  currency?: string;
+  subTotal?:  number;
+  currency?:  string;
   itemCount?: number;
+  items?:     NMCartItem[];   // required by Netmera backend (code 2004 if missing)
   [key: string]: unknown;
 }
 
 export interface NMPurchaseEvent {
-  orderId?: string;
-  subTotal?: number;
-  shipping?: number;
-  tax?: number;
-  discount?: number;
-  coupon?: string;
-  currency?: string;
+  orderId?:   string;
+  subTotal?:  number;
+  shipping?:  number;
+  tax?:       number;
+  discount?:  number;
+  coupon?:    string;
+  currency?:  string;
   itemCount?: number;
+  items?:     NMCartItem[];   // required by Netmera backend (code 2004 if missing)
   [key: string]: unknown;
 }
 

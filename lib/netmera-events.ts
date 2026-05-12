@@ -273,10 +273,16 @@ export function nmViewCart(
   // ── Real SDK  (n:vt) ──────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event    = new api.ViewCartEvent();
+      const event     = new api.ViewCartEvent();
       event.subTotal  = Math.round(cartValue * 100) / 100;
       event.currency  = "USD";
       event.itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+      event.items     = items.map((i) => ({
+        itemId:   i.productId,
+        itemName: i.productName,
+        price:    i.price,
+        quantity: i.quantity,
+      }));
       api.sendEvent(event);
     } catch (err) {
       console.warn("[N·Walks Netmera] ViewCartEvent (n:vt) failed:", err);
@@ -324,6 +330,12 @@ export function nmPurchase(
       event.coupon    = "";
       event.currency  = "USD";
       event.itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
+      event.items     = items.map((i) => ({
+        itemId:   i.productId,
+        itemName: i.productName,
+        price:    i.price,
+        quantity: i.quantity,
+      }));
       api.sendEvent(event);
     } catch (err) {
       console.warn("[N·Walks Netmera] PurchaseEvent (n:ph) failed:", err);
