@@ -259,28 +259,32 @@ export function nmAddToCart(
   });
 }
 
-/** Fired when the /cart page is displayed. */
+/**
+ * Standard Netmera event: View Cart  (code: n:vt)
+ * Fired when the user views the /cart page.
+ * SDK constructor: ViewCartEvent → sent as n:vt
+ */
 export function nmViewCart(
   items: Array<{ productId: string; productName: string; price: number; quantity: number }>,
   cartValue: number
 ) {
   const { utmSource, utmMedium, utmCampaign } = getUtmParams();
 
-  // ── Real SDK ──────────────────────────────────────────────────────────────
+  // ── Real SDK  (n:vt) ──────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event = new api.ViewCartEvent();
+      const event    = new api.ViewCartEvent();
       event.subTotal  = Math.round(cartValue * 100) / 100;
       event.currency  = "USD";
       event.itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
       api.sendEvent(event);
     } catch (err) {
-      console.warn("[N·Walks Netmera] ViewCartEvent failed:", err);
+      console.warn("[N·Walks Netmera] ViewCartEvent (n:vt) failed:", err);
     }
   });
 
   // ── Simulation layer ──────────────────────────────────────────────────────
-  trackEvent("view_cart", {
+  trackEvent("n:vt", {
     utmSource,
     utmMedium,
     utmCampaign,
@@ -295,7 +299,11 @@ export function nmViewCart(
   });
 }
 
-/** Fired when the checkout is confirmed (order placed). */
+/**
+ * Standard Netmera event: Purchase  (code: n:ph)
+ * Fired when the user confirms checkout (Checkout button click).
+ * SDK constructor: PurchaseEvent → sent as n:ph
+ */
 export function nmPurchase(
   items: Array<{ productId: string; productName: string; price: number; quantity: number }>,
   revenue: number,
@@ -304,24 +312,26 @@ export function nmPurchase(
 ) {
   const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
-  // ── Real SDK ──────────────────────────────────────────────────────────────
+  // ── Real SDK  (n:ph) ──────────────────────────────────────────────────────
   pushToRealSDK((api: NMApi) => {
     try {
-      const event = new api.PurchaseEvent();
+      const event     = new api.PurchaseEvent();
       event.orderId   = orderId;
       event.subTotal  = Math.round(revenue * 100) / 100;
       event.shipping  = Math.round(shipping * 100) / 100;
       event.tax       = Math.round(tax * 100) / 100;
+      event.discount  = 0;
+      event.coupon    = "";
       event.currency  = "USD";
       event.itemCount = items.reduce((acc, i) => acc + i.quantity, 0);
       api.sendEvent(event);
     } catch (err) {
-      console.warn("[N·Walks Netmera] PurchaseEvent failed:", err);
+      console.warn("[N·Walks Netmera] PurchaseEvent (n:ph) failed:", err);
     }
   });
 
   // ── Simulation layer ──────────────────────────────────────────────────────
-  trackEvent("purchase", {
+  trackEvent("n:ph", {
     orderId,
     revenue: Math.round(revenue * 100) / 100,
     shipping: Math.round(shipping * 100) / 100,
